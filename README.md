@@ -1,11 +1,12 @@
 # Fa
 
 This gem provides bindings to [libfa](http://augeas.net/libfa/index.html),
-a library for doing algebra on regular expressions. If you've ever asked
-yourself questions like "Are these two regular expressions matching the
-same set of strings ?" or wanted to determine a regular expression that
-matches all strings that match one regular expression, but not a second
-one, this is the library that can answer these questions for you.
+a library for doing algebra on [regular expressions](#syntax). If you've
+ever asked yourself questions like "Are these two regular expressions
+matching the same set of strings ?" or wanted to determine a regular
+expression that matches all strings that match one regular expression, but
+not a second one, this is the library that can answer these questions for
+you.
 
 ## Installation
 
@@ -91,6 +92,68 @@ of strings, or if one matches strictly more strings than another:
     puts Fa["a+"].minus(Fa["a*"]).empty?
     # true
 ```
+
+### Syntax
+
+The regular expressions that `libfa` understand are a subset of the POSIX
+extended regular expression syntax. If you are a regular expression
+aficionado, you should note that `libfa` does not support some popular
+syntax extensions. Most importantly, it does not support backreferences,
+anchors such as `^` and `$`, and named character classes such as
+`[[:upper:]]`. The first two are not supported since they take the notation
+out of the realm of finite automata and actual regular expressions. Named
+character classes are not implemented because there's a lot of work to
+support them, even though there is no objection from theory to them.
+
+The character set that `libfa` operates on is simple 8 bit ASCII. In other
+words, to `libfa`, a character is a byte, and it does not support larger
+character sets such as UTF-8.
+
+The following characters have special meaning for `libfa`. The symbols `R`,
+`S`, `T`, etc. in the list below can be regular expressions themselves. The
+list is ordered by increasing precendence of the operators.
+
+* `R|S`: matches anything that matches either `R` or `S`
+* `R*`: matches any number of `R`, including none
+* `R+`: matches any number of `R`, but at least one
+* `R?`: matches no or one occurence of `R`
+* `R{n,m}`: matches at least `n` but no more than `m` occurences of
+  `R`. `n` must be nonnegative. If `m` is missing or equals `-1`, matches
+  an unlimited number of `R`.
+* `(R)`: the parentheses are solely there for grouping, and this expression
+  matches the same strings as `R` alone
+* `[C]`: matches the characters in the character set `C`; see below for the
+  syntax of character sets
+* `.`: matches any single character except for newline
+* `\c`: the literal character `c`, even if it would otherwise have special
+  meaning; the expression `\(` matches an opening parenthesis.
+
+Character classes `[C]` use the following notation:
+
+* `[^C]`: matches all characters not in `[C]`. `[^a-zA-Z]` matches
+  everything that is not a letter.
+* `[a-z]`: matches all characters between `a` and `z`, inclusive. Multiple
+  ranges can be specified in the same character set. `[a-zA-Z0-9]` is a
+  perfectly valid character set.
+* if a character set should include `]`, it must be listed as the first
+  character. `[][]` matches the opening and closing bracket.
+* if a character set should include `-`, it must be listed as the last
+  character. `[-]` matches solely a dash.
+* no characters in character sets are special, and there is no backslash
+  escaping of characters in character classes. `[.]` matches a literal dot.
+
+The regular expression syntax has no notation for control characters: when
+`libfa` sees `\n` in a string you are compiling, it will match that against
+the character `n`, not a newline. That's not a problem as the strings you
+write in Ruby code go through Ruby's backslash interpretation first. When
+you write `Fa.compile("[\n]")`, `libfa` never sees the backslash as Ruby
+replaces `\n` with a newline character before that string ever makes it to
+`libfa`. That has the funny consequence that if you want to use a literal
+backslash in your regular expression, your input string must have _four_
+backslashes in it: when you write `Fa.compile("\\\\")`, Ruby first turns
+that into a string with two backslashes, which `libfa` then interprets as a
+single
+backslash. \[_If you are reading this in YARD documentation and only saw two backslashes in the `Fa.compile`, it's because YARD reduced them from the markdown source. Github does not, and so this example will always be wrong in one of them._\]
 
 ## Development
 
