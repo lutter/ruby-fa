@@ -1,34 +1,11 @@
-# Fa
+# Finite Automata Algebra
 
 This gem provides bindings to [libfa](http://augeas.net/libfa/index.html),
-a library for doing algebra on [regular expressions](#syntax). If you've
-ever asked yourself questions like "Are these two regular expressions
-matching the same set of strings ?" or wanted to determine a regular
+a library for doing algebra on [regular expressions](#syntax). Using this
+library, it is easy to answer questions like "Are these two regular
+expressions matching the same set of strings ?" or "What is the regular
 expression that matches all strings that match one regular expression, but
-not a second one, this is the library that can answer these questions for
-you.
-
-## Installation
-
-Add this line to your application's Gemfile:
-
-```ruby
-gem 'fa'
-```
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install fa
-
-For things to work out, you will also have to have `libfa` installed; the
-library is distributed as part of [augeas](http://augeas.net/). On Red
-Hat-derived distros like Fedora, CentOS, or RHEL, you will need to `yum
-install augeas-libs`, on Debian-derived distros, run `apt-get install
-libaugeas0`.
+not a second one ?"
 
 ## Usage
 
@@ -37,6 +14,8 @@ convert your regular expression into a finite automaton. This is done by
 compiling your regular expression:
 
 ```ruby
+    require 'fa'
+
     fa1 = Fa.compile("(a|b)")  # can also be written as Fa["(a|b)"]
     fa2 = fa1.plus
 ```
@@ -47,14 +26,18 @@ beyond the mathematical notion of a regular expression and can therefore
 not be used to do the kinds of computation that `libfa` performs. The
 regular expressions that `libfa` deals in must be written using a (subset
 of) the notation for
-[extended POSIX regular expressions](https://en.wikibooks.org/wiki/Regular_Expressions/POSIX-Extended_Regular_Expressions). The
+[extended POSIX regular expressions](https://en.wikibooks.org/wiki/Regular_Expressions/POSIX-Extended_Regular_Expressions)
+(see [this section](#syntax) for syntax details). The
 biggest difference between POSIX ERE and the syntax that `libfa`
 understands is that `libfa` does not allow backreferences, does not support
 anchors like `^` and `$`, and does not support named character classes like
-`[[:space:]]`.
+`[[:space:]]`. Luckily, this notation is also a subset of Ruby's regular
+expression syntax, and the results of computations with `libfa` can be used
+to construct normal Ruby regular expressions.
 
-You can always turn a finite automaton back into a regular expression using
-`Fa#to_s`:
+Here are some examples of what you can do, see
+[the API documentation](http://www.rubydoc.info/gems/fa) for more details
+on what these operations do.
 
 ```ruby
 
@@ -76,9 +59,9 @@ You can always turn a finite automaton back into a regular expression using
     # "a"
 ```
 
-You can also compare finite automata, and therefore learn things on how
+You can also compare finite automata, and therefore learn things about how
 they behave on _all_ strings, for example if they match the same exact set
-of strings, or if one matches strictly more strings than another:
+of strings, or if one matches more strings than another:
 
 ```ruby
     fa = Fa["[a-z]"].intersect(Fa["a*"])
@@ -93,9 +76,36 @@ of strings, or if one matches strictly more strings than another:
     # true
 ```
 
+You could, for example, construct a regular expression that matches all
+strings made up of digits where adjacent digits are always different:
+
+```ruby
+    require 'fa'
+
+    numbers = Fa["[0-9]+"]
+
+    # Matches numbers that have twin digits somewhere
+    twins = Fa["[0-9]*(00|11|22|33|44|55|66|77|88|99)[0-9]*"]
+
+    # Numbers where adjacent digits are always different
+    no_twins = numbers.minus(twins)
+
+    # Ruby regex from no_twins. We need to mark all '(' as noncapturing groups,
+    # otherwise Ruby's matcher freaks out
+    rx = /\A(#{no_twins.to_s.gsub("(", "(?:")})\Z/
+
+    ["789", "202", "911", "666"].each do |s|
+      if s =~ rx
+        puts "#{s} has no duplicated digits"
+      else
+        puts "#{s} has duplicated digits"
+      end
+    end
+```
+
 ### Syntax
 
-The regular expressions that `libfa` understand are a subset of the POSIX
+The regular expressions that `libfa` understands are a subset of the POSIX
 extended regular expression syntax. If you are a regular expression
 aficionado, you should note that `libfa` does not support some popular
 syntax extensions. Most importantly, it does not support backreferences,
@@ -154,6 +164,28 @@ backslashes in it: when you write `Fa.compile("\\\\")`, Ruby first turns
 that into a string with two backslashes, which `libfa` then interprets as a
 single
 backslash. \[_If you are reading this in YARD documentation and only saw two backslashes in the `Fa.compile`, it's because YARD reduced them from the markdown source. Github does not, and so this example will always be wrong in one of them._\]
+
+## Installation
+
+Add this line to your application's Gemfile:
+
+```ruby
+gem 'fa'
+```
+
+And then execute:
+
+    $ bundle
+
+Or install it yourself as:
+
+    $ gem install fa
+
+For things to work out, you will also have to have `libfa` installed; the
+library is distributed as part of [augeas](http://augeas.net/). On Red
+Hat-derived distros like Fedora, CentOS, or RHEL, you will need to `yum
+install augeas-libs`, on Debian-derived distros, run `apt-get install
+libaugeas0`.
 
 ## Development
 

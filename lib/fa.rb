@@ -217,6 +217,7 @@ module Fa
   # @param [String] rx a regular expression
   # @return [Fa::Automaton] the finite automaton
   def self.compile(rx)
+    return make_basic(:empty) if rx.nil?
     faptr = ::FFI::MemoryPointer.new :pointer
     r = FFI::compile(rx, rx.size, faptr)
     raise Error if r != 0 # REG_NOERROR is 0, at least for glibc
