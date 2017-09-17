@@ -1,8 +1,11 @@
 # Fa
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/fa`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+This gem provides bindings to [libfa](http://augeas.net/libfa/index.html),
+a library for doing algebra on regular expressions. If you've ever asked
+yourself questions like "Are these two regular expressions matching the
+same set of strings ?" or wanted to determine a regular expression that
+matches all strings that match one regular expression, but not a second
+one, this is the library that can answer these questions for you.
 
 ## Installation
 
@@ -20,17 +23,88 @@ Or install it yourself as:
 
     $ gem install fa
 
+For things to work out, you will also have to have `libfa` installed; the
+library is distributed as part of [augeas](http://augeas.net/). On Red
+Hat-derived distros like Fedora, CentOS, or RHEL, you will need to `yum
+install augeas-libs`, on Debian-derived distros, run `apt-get install
+libaugeas0`.
+
 ## Usage
 
-TODO: Write usage instructions here
+To perform computations on regular expressions, `libfa` needs to first
+convert your regular expression into a finite automaton. This is done by
+compiling your regular expression:
+
+```ruby
+    fa1 = Fa.compile("(a|b)")  # can also be written as Fa["(a|b)"]
+    fa2 = fa1.plus
+```
+
+Notice that the regular expression needs to be given as a
+string. Unfortunately, Ruby regular expressions allow constructs that go
+beyond the mathematical notion of a regular expression and can therefore
+not be used to do the kinds of computation that `libfa` performs. The
+regular expressions that `libfa` deals in must be written using a (subset
+of) the notation for
+[extended POSIX regular expressions](https://en.wikibooks.org/wiki/Regular_Expressions/POSIX-Extended_Regular_Expressions). The
+biggest difference between POSIX ERE and the syntax that `libfa`
+understands is that `libfa` does not allow backreferences, does not support
+anchors like `^` and `$`, and does not support named character classes like
+`[[:space:]]`.
+
+You can always turn a finite automaton back into a regular expression using
+`Fa#to_s`:
+
+```ruby
+
+    puts fa1
+    # "b|a"
+    puts fa1.minimize
+    # "[ab]"
+    puts fa1.union(fa2).minimize
+    # "[ab][ab]*"
+    puts fa1.concat(fa2).minimize
+    # "[ab][ab][ab]*"
+    puts fa2.intersect(fa1).minimize
+    # "b|a"
+    puts fa2.intersect(Fa["a*"]).minimize
+    # "aa*"
+    puts fa1.intersect(Fa["a*"]).minimize
+    # "a"
+    puts Fa["a+"].minus(Fa["a{2,}"])
+    # "a"
+```
+
+You can also compare finite automata, and therefore learn things on how
+they behave on _all_ strings, for example if they match the same exact set
+of strings, or if one matches strictly more strings than another:
+
+```ruby
+    fa = Fa["[a-z]"].intersect(Fa["a*"])
+    puts Fa["a"].equals(fa)
+    # true
+    fa = Fa["a"].union(Fa["b"]).star.concat(Fa["c"].plus)
+    puts Fa["(a|b)*c+"].equals(fa)
+    # true
+    puts Fa["[ab]*"].contains(Fa["a*"])
+    # true
+    puts Fa["a+"].minus(Fa["a*"]).empty?
+    # true
+```
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repo, run `bin/setup` to install dependencies. Then,
+run `rake test` to run the tests. You can also run `bin/console` for an
+interactive prompt that will allow you to experiment.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+To install this gem onto your local machine, run `bundle exec rake
+install`. To release a new version, update the version number in
+`version.rb`, and then run `bundle exec rake release`, which will create a
+git tag for the version, push git commits and tags, and push the `.gem`
+file to [rubygems.org](https://rubygems.org).
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/fa.
-
+Bug reports and pull requests are welcome on GitHub at
+https://github.com/lutter/ruby-fa.
