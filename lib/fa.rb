@@ -91,6 +91,8 @@ module Fa
       return str_ptr.null? ? nil : str_ptr.read_string()
     end
 
+    def to_s; as_regexp; end
+
     def self.release(faptr)
       FFI::free(faptr)
     end
@@ -107,6 +109,10 @@ module Fa
     r = FFI::compile(rx, rx.size, faptr)
     raise Error if r < 0
     Automaton.new(faptr.get_pointer(0))
+  end
+
+  def self.[](rx)
+    compile(rx)
   end
 
   def self.make_basic(kind)
